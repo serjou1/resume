@@ -104,3 +104,42 @@ func TestIncrementalParse(t *testing.T) {
 		t.Fatalf("partial last line was consumed: size %d of %d", s.Size, fi.Size())
 	}
 }
+
+func TestNormalize(t *testing.T) {
+	got := normalize("Создаю  пользователей `igor` и **victor**\n\nс ролью")
+	if got != "создаю пользователей igor и victor с ролью" {
+		t.Fatal(got)
+	}
+}
+
+func TestSearchPrefersSessionOverPrompt(t *testing.T) {
+	dir := t.TempDir()
+	orig := filepath.Join(dir, "orig.jsonl")
+	asker := filepath.Join(dir, "asker.jsonl")
+	other := filepath.Join(dir, "other.jsonl")
+	os.WriteFile(orig, []byte(`{"type":"assistant","message":{"content":[{"type":"thinking","thinking":"Создаю пользователей `+"`igor`"+` в Grafana.\n\n","signature":"x"}]}}`+"\n"), 0o644)
+	os.WriteFile(asker, []byte(`{"type":"user","message":{"content":"в какой сессии было \"Создаю пользователей igor в Grafana.\""}}`+"\n"), 0o644)
+	os.WriteFile(other, []byte(`{"type":"assistant","message":{"content":[{"type":"text","text":"nothing here"}]}}`+"\n"), 0o644)
+	found, strength := Search([]string{orig, asker, other}, "Создаю пользователей igor в Grafana.")
+	if strength != matchSession || len(found) != 1 || found[0] != orig {
+		t.Fatalf("found %v strength %d", found, strength)
+	}
+	found, strength = Search([]string{asker, other}, "создаю пользователей IGOR")
+	if strength != matchPrompt || len(found) != 1 || found[0] != asker {
+		t.Fatalf("prompt-only: found %v strength %d", found, strength)
+	}
+	if found, _ := Search([]string{orig, other}, "нет такого текста"); len(found) != 0 {
+		t.Fatalf("expected none, got %v", found)
+	}
+}
+
+func TestSearchFirstOccurrenceDecides(t *testing.T) {
+	dir := t.TempDir()
+	asker := filepath.Join(dir, "asker.jsonl")
+	// The user pasted the phrase, then Claude quoted it in the answer.
+	os.WriteFile(asker, []byte(`{"type":"user","message":{"content":"где было \"Создаю пользователей igor\""}}`+"\n"+
+		`{"type":"assistant","message":{"content":[{"type":"text","text":"Фраза «Создаю пользователей igor» была в сессии d9d1"}]}}`+"\n"), 0o644)
+	if s := searchTranscript(asker, normalize("Создаю пользователей igor")); s != matchPrompt {
+		t.Fatalf("strength %d", s)
+	}
+}

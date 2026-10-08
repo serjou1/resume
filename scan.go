@@ -66,6 +66,7 @@ type record struct {
 	IsMeta      bool   `json:"isMeta"`
 	IsSidechain bool   `json:"isSidechain"`
 	GitBranch   string `json:"gitBranch"`
+	Cwd         string `json:"cwd"`
 	AiTitle     string `json:"aiTitle"`
 	CustomTitle string `json:"customTitle"`
 	Summary     string `json:"summary"`
@@ -116,6 +117,9 @@ func parseTranscript(s *Session, fi os.FileInfo) {
 					if t.After(updated) {
 						updated = t
 					}
+				}
+				if s.Cwd == "" && rec.Cwd != "" {
+					s.Cwd = rec.Cwd
 				}
 				switch rec.Type {
 				case "custom-title":

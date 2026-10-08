@@ -31,6 +31,30 @@ Record new sessions in `.resume.json` as they start — add to
 
 Without the hook `resume` still picks up every session the next time it runs.
 
+## Find a session by text
+
+```sh
+resume "Создаю пользователей igor и victor с ролью Viewer в Grafana"
+```
+
+`resume "text"` looks for sessions whose conversation contains the text:
+prompts, Claude's answers and thinking, tool calls and tool output. Case,
+whitespace, quotes and markdown marks (`` ` * _ ~ ``) are ignored, so text
+copied from the terminal matches the raw markdown in the transcript.
+
+- one session found: it is resumed at once;
+- several found: the menu shows only them;
+- none found: `resume: no sessions contain "…"`, exit code 1.
+
+It searches the sessions of the current directory first, then the transcripts
+of all projects. A session from another project is resumed from the directory
+it started in.
+
+A session where the text first appears in a prompt you typed (for example a
+session where you asked "which session said …") ranks below a session where
+the text first appears in Claude's part of the conversation, and is shown only
+when no such session exists.
+
 ## Keys
 
 | key | action |

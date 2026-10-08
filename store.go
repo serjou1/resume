@@ -28,6 +28,7 @@ type Session struct {
 	Created     time.Time `json:"created"`
 	Updated     time.Time `json:"updated"`
 	Transcript  string    `json:"transcript"`
+	Cwd         string    `json:"cwd,omitempty"` // directory the session started in
 	// Size is the transcript size at the last parse. Claude Code only appends
 	// to transcripts, so sync parses just the bytes after Size.
 	Size int64 `json:"size"`

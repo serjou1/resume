@@ -31,6 +31,8 @@ type model struct {
 	width   int
 	height  int
 	chosen  *Session
+	header  string // replaces the directory in the title line
+	global  bool   // sessions come from several projects: show and delete by their Cwd
 }
 
 func newModel(dir string, sessions []Session) *model {
@@ -178,7 +180,11 @@ func (m *model) updateConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case msg.String() == "y" || msg.String() == "Y" || msg.Type == tea.KeyEnter:
 		s := m.visible[m.cursor]
-		if err := deleteSession(m.dir, s.ID); err != nil {
+		dir := m.dir
+		if m.global && s.Cwd != "" {
+			dir = s.Cwd
+		}
+		if err := deleteSession(dir, s.ID); err != nil {
 			m.status = "delete failed: " + err.Error()
 		} else {
 			for i := range m.all {
@@ -199,7 +205,7 @@ func (m *model) updateConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	var b strings.Builder
-	b.WriteString(styleHeader.Render("Resume Session") + styleDim.Render("  "+m.dir) + "\n")
+	b.WriteString(styleHeader.Render("Resume Session") + styleDim.Render("  "+firstNonEmpty(m.header, m.dir)) + "\n")
 	if m.query != "" {
 		b.WriteString("⌕ " + m.query + "\n")
 	} else {
@@ -225,6 +231,9 @@ func (m *model) View() string {
 		details := ago(now, s.Updated) + " · " + plural(s.Messages, "message")
 		if s.Branch != "" && s.Branch != "HEAD" {
 			details += " · " + s.Branch
+		}
+		if m.global && s.Cwd != "" {
+			details += " · " + s.Cwd
 		}
 		if i == m.cursor {
 			b.WriteString(styleSelected.Render("❯ "+title) + "\n")
